@@ -16,6 +16,7 @@ Create environment for loading iwildcam dataset
 
 1: ssh in tothe dsmlp environment:
 ssh <user_name>@dsmlp-login.ucsd.edu
+
 Example: ssh zhc023@dsmlp-login.ucsd.edu
 
 2: launch-scipy-ml.sh -c 8 -m 50 -i billchen24/dsc180b-project -P Always // request 8 cpu and 50 GB, and create specific environment with my docker image 
