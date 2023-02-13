@@ -1,4 +1,13 @@
 # DSC180B-Project-B319-2
+# Domain Adaptation of CNN in Animal Classification Task
+
+### For Test Trails:
+After downloading the githubt repo (including the sample data in data folder), run the following code in terminal
+'''
+python run.py test
+'''
+This code will train a modified AlexNet on the sample data and report the error rate in each epoch.
+
 
 Create environment for loading iwildcam dataset 
 
