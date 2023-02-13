@@ -38,10 +38,11 @@ def main(trail = 'main', batchsize=64):
     """
    
     #initialize model
-    epoch = 20
+    epoch = 100
     model=CustomCNN(500) #input: Final Class Labels
     model.to(model.device)
     
+    mean_losses=[]
     #Get Data Loader Based on Trail
     if trail == 'main':
         dataset = get_dataset(dataset="iwildcam", download=False) #size 203029
@@ -63,21 +64,25 @@ def main(trail = 'main', batchsize=64):
     for ep in range(epoch):
         gen=get_data_generator(trail, dataset, batchsize = batchsize, shuffle=False)
         r=train_oneepoch(gen, model, 'entropy', optimizer ='Adam', learning_rate = 0.00001, bg_remove = True)
-        print(r) #r: average loss over a epoch
+        #print(r) #r: average loss over a epoch
+        mean_losses+=[r]
         #validate_oneepoch(data_loader, model, loss_func, optimizer = None, learning_rate = 0.0001)
     
     #Display Output
+    return mean_losses
 
 def get_imgs(test_data_path, test_meta_path):
     
     # The path to the folder
     folder_path = test_data_path
-    
     # Get a list of all the filenames in the folder
     filenames_exist = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+    
+    #Create meta data for test sample
     #metadata = pd.read_csv("data/raw/metadata.csv")
     #metadata_test =metadata[metadata['filename'].apply(lambda x: x in filenames_exist)]
     #metadata_test.iloc[:,1:].to_csv(test_meta_path)
+    
     metadata_test=pd.read_csv(test_meta_path, index_col = 0).reset_index()
     filenames = metadata_test['filename'].values
     category_ids=metadata_test['category_id'].values
@@ -85,12 +90,12 @@ def get_imgs(test_data_path, test_meta_path):
     labels=[]
     for i, f in enumerate(filenames):
         try:
-            img=plt.imread("data/raw/sample/"+f)
-            img=np.transpose(img, (2, 0, 1))
+            img=plt.imread("data/raw/sample/"+f) #read the image
+            img=np.transpose(img, (2, 0, 1)) #reshape to 3xheight x width
         except:
             print(f)
         else:
-            images+=[img[:,:448,:448]]
+            images+=[img[:,:448,:448]] #crop to 3x448x448
             labels+=[category_ids[i]]
         if i==200:
             break
@@ -114,10 +119,26 @@ def get_data_generator(trail, dataset, batchsize = 32, shuffle=False):
         #print('Test Trail Data')
     return gen
 
+def draw_loss_plot(losses, save_path='result/'):
+    plt.plot(losses)
+    plt.xlabel('epoch count')
+    plt.ylabel('loss')
+    plt.title('Training Loss over epochs')
+    save_file_path = save_path+f"loss_plot_{str(datetime.today())[:19].replace(' ','_')}.png"
+    plt.savefig(save_file_path)
+    print(f'save the loss image to {save_file_path}')
+
 if __name__ == '__main__': #if run from command line
     targets = sys.argv[1:]
     if targets[0] =='main':
-        main('main',batchsize=64)
+        losses=main('main',batchsize=64)
     if targets[0] =='test':
-        main('test',batchsize=32)
-    #main(targets)
+        losses=main('test',batchsize=32)
+    
+    #To Save Result:
+    path = 'result/'
+    #Check and Create dir for result
+    if not os.path.exists(path):
+        os.mkdir(path)
+    if os.path.exists(path):
+        draw_loss_plot(losses, save_path='result/')
