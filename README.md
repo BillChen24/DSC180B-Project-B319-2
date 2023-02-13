@@ -3,12 +3,13 @@
 
 ### For Test Trails:
 After downloading the githubt repo (including the sample data in data folder), run the following code in terminal
-'''
+```
 python run.py test
-'''
+```
 This code will train a modified AlexNet on the sample data and report the error rate in each epoch.
 
 
+### To Get Whole dataset
 Create environment for loading iwildcam dataset 
 
 0: Open a terminal 
