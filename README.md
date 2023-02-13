@@ -12,7 +12,9 @@ The loss plot will be saved in the path printed at teh end of the execution.
 
 #### After Runing
 To clear all output files, run the following command in terminal:
-```rm -r result/```
+```
+rm -r result/
+```
 
 
 ### To Get Whole dataset
