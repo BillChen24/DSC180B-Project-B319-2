@@ -2,6 +2,33 @@ import numpy as np
 from PIL import Image, ImageOps
 import matplotlib.pyplot as plt
 
+def plot_tensor(tensor):
+    plt.imshow(tensor.permute(1, 2, 0))
+    
+def plot_background(bg):
+    if bg['day'] == None:
+        print("No day images")
+    else:
+        plt.subplot(1, 2, 1)
+        plot_tensor(bg['day'])
+        plt.title('daytime background')
+        
+    if bg['night'] == None:
+        print("No night images")
+    else:
+        plt.subplot(1, 2, 2)
+        plot_tensor(bg['night'])
+        plt.title('nighttime background')
+
+def with_vs_no_background(tensor, bg):
+    plt.figure()
+    plt.subplot(1, 2, 1)
+    plot_tensor(tensor)
+    plt.title('original image')
+    plt.subplot(1, 2, 2)
+    plot_tensor(tensor - bg)
+    plt.title('No background')
+        
 def plot_scatter(img_path, img_name = "Image", x_axis = "Red", y_axis = "Blue"):
     img = Image.open(img_path)
     arr = np.array(img).astype(np.float64)/256
