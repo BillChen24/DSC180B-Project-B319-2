@@ -6,7 +6,13 @@ After downloading the githubt repo (including the sample data in data folder), r
 ```
 python run.py test
 ```
-This code will train a modified AlexNet on the sample data and report the error rate in each epoch.
+This code will train a modified AlexNet on the sample data and generate a loss curve over epochs.
+
+The loss plot will be saved in the path printed at teh end of the execution.
+
+#### After Runing
+To clear all output files, run the following command in terminal:
+```rm -r result/```
 
 
 ### To Get Whole dataset
