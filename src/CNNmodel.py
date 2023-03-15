@@ -214,43 +214,69 @@ def validation_oneepoch(data_loader, model, loss_func, dataset= None, optimizer 
     return total_loss/i
 
 
-def train_model(total_epoch):
-    print("start running")
-    #total_epoch = 100
-    start_epoch =0 #self.__current_epoch
-    #patience_count = 0
-    min_loss = 100
-    train_losses = []
+def test_model(data_loader, model, dataset= None,  bg_remove = False, normalize = False):
+    """
+    test model accuracy
+    """
+    #batch_size=10
+ 
+
+    predictions =[]
+    outputs=[]
+    train_labelsorigin=[]
+    train_labels=[]
+    #train_loc=[]
+    #train_hour=[]
     
-    for epoch in range(start_epoch,total_epoch): 
-        print(f'Epoch {epoch + 1}')
-        print('--------')
-        start_time = datetime.now()
-        #self.__current_epoch = epoch
-        print('Training...')
-        print('-----------')
-        train_loss = train_oneepoch(gen, model, 'entropy', optimizer = None, learning_rate = 0.0001) #self.__train()
-        train_losses.append(train_loss)
-        print('Validating...')
-        print('-------------')
-        val_loss = validate_oneepoch(gen, model, 'entropy', optimizer = None, learning_rate = 0.0001) #self.__train()
+    for i,databatch in enumerate(tqdm(data_loader)):    
+#         if optimizer == 'Adam':
+#             optimizer = optim.Adam(model.parameters(),lr=learning_rate)
+#             optimizer.zero_grad()
+        train_image = databatch[0] #batchsize ,3, 448, 448
+        train_label = databatch[1]
+        train_meta = databatch[2]
 
-        # save best model
-        if val_loss < min_loss:
-            min_loss = val_loss
-            self.__best_model = "best_model.pt"
-            model_dict = self.__model.state_dict()
-            state_dict = {'model': model_dict, 'optimizer': self.__optimizer.state_dict()}
-            torch.save(state_dict, self.__best_model)
+        #train_loc=train_loc+train_meta[:,0].tolist()
+        #train_hour=train_hour+train_meta[:,5].tolist()
 
-        # early stop if model starts overfitting
-        if self.__early_stop:
-            if epoch > 0 and val_loss > self.__val_losses[epoch - 1]:
-                patience_count += 1
-            if patience_count >= self.__patience:
-                print('\nEarly stopping!')
-                #self.__record_stats(train_loss, val_loss)
-                break
+        train_labelsorigin+=train_label.tolist()
+        train_label = Category_id_order_mapper(catId=train_label, Catorder=None, id2order=True) #Change to mapper
+        train_label=torch.tensor(train_label,dtype=torch.long)
+
+        #BG subtract
+        if bg_remove == True:
+            median_bgs = torch.load('data/Background/median_background.json')
+            bgs = torch.stack([find_background(median_bgs, meta_array = meta) for meta in train_meta])
+            subtracted = train_image-bgs
+            masks = torch.stack([getBinary(s) for s in subtracted])
+            train_image = torch.mul(train_image, masks)
+            
+        #Normalization
+        if normalize == True:
+            train_image = torch.stack([normalZ(d) for d in train_image])
+      
+        train_label = Category_id_order_mapper(catId=train_label, Catorder=None, id2order=True) #Map class id to index
+        
+        train_label=torch.tensor(train_label,dtype=torch.long)
+        train_image = train_image.to(model.device)
+        train_label = train_label.to(model.device)
+       
+        batch_size = train_image.shape[0]
+        output = model.forward(x=train_image)
+        #print(output.shape) #batchsize x class number
+
+        predictions+=((torch.argmax(output,axis=1)==train_label)).to(torch.float).tolist()
+        outputs+=(torch.argmax(output,axis=1)).tolist()
+        train_labels+=train_label.tolist()
+
+        train_image.detach() #TO help free memory
+        train_label.detach()
+
+        print('Overall Accuracy:')
+        print(sum(predictions)/len(predictions))
+       
+    return sum(predictions)/len(predictions)
+
 
 #Model 2
 class TransferAlex():
