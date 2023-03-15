@@ -51,19 +51,39 @@ def get_location_median(dataset, location_index, sample = 200):
     
     return {"day": day_median, "night": night_median}
 
-def find_background(data, bg_dict):
-    meta_array = data[2]
+def find_background(bg_dict,data = None, meta_array = None):
+    if meta_array is None:
+        meta_array = data[2]
     location = meta_array[0].item()
     hour = meta_array[5].item()
-    if hour > 6 & hour < 18:
+    if hour > 6 and hour < 18:
         time = 'day'
     else:
         time = 'night'
     return bg_dict[location][time]
- 
-def remove_background(data, bg_dict, alpha = 1):
+
+def getBinary(subtracted, alpha = 2):
+    tnorm = torch.norm(subtracted.reshape(3,448*448), dim = 0)
+    norm_mean = tnorm.mean().item()
+    norm_std = tnorm.std().item()
+    threshold = norm_mean + alpha * norm_std
+    M = tnorm.apply_(lambda x: 1 if x >= threshold else 0).reshape(448,448)
+    M = torch.stack([M,M,M])
+    return M
+
+def getMask(original, binary):
+    return torch.mul(original, binary)
+
+def remove_background(data, bg_dict, mask = True, out_binary = False, alpha = 2):
     tensor = data[0]
-    bg = find_background(data, bg_dict)
-    out = abs(tensor - bg)
-    t_mean = torch.mean(out).item()
-    return out.apply_(lambda x: 0 if x < alpha * t_mean else x)
+    bg = find_background(bg_dict, data = data)
+    subtracted = tensor - bg
+    if mask:
+        binary = getBinary(subtracted, alpha)
+        if out_binary:
+            return binary
+        out = getMask(tensor, binary)
+    else:
+        out = abs(subtracted)
+    
+    return out
