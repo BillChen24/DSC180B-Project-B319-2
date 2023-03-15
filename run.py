@@ -77,29 +77,15 @@ def main(trail = 'main', batchsize=64, epoch = 30, bg_remove = False, normalize 
         print(epoch_loss)
         mean_losses+=[epoch_loss]
         
-#         gen=get_data_generator(trail, dataset, batchsize = batchsize, shuffle=False)
-#         epoch_loss_val=validation_oneepoch(gen, model, 'entropy', optimizer =None, learning_rate = 0.00001, bg_remove = bg_remove,normalize = normalize)
-#         mean_losses_val+=[epoch_loss_val]
-        
         if epoch_loss < min_val_loss:
             min_val_loss = epoch_loss
             model_dict = model.state_dict()
-            #state_dict = {'model': model_dict} #'optimizer': self.__optimizer.state_dict()}
-            
-        
-#         if epoch_loss_val < min_val_loss:
-#             min_val_loss = epoch_loss_val
-#             mode_savepath = f"best_model_{str(datetime.today())[:10].replace(' ','_')}.pt"
-#             model_dict = model.state_dict()
-#             state_dict = {'model': model_dict} #'optimizer': self.__optimizer.state_dict()}
-#             torch.save(state_dict, mode_savepath)
-            #If load Model:
-            #model = CustomCNN(100)
-            #model.load_state_dict(torch.load(PATH))
+
     #Display Output
     #Save the best model
     mode_savepath = f"result/best_model_{str(datetime.today())[:10].replace(' ','_')}.pt"
     torch.save(model_dict, mode_savepath)
+    print(f'saved the final model to {mode_savepath}')
     return [mean_losses, mean_losses_val, accuracy, accuracy_val]
 
 def Alex(trail = 'alex', batchsize=64, epoch = 10, bg_remove = False, normalize = False):
@@ -218,6 +204,11 @@ def draw_loss_plot(results, save_path='result/'):
     print(f'save the loss image to {save_file_path}')
 
 if __name__ == '__main__': #if run from command line
+    #Prepare path to save result
+    path = 'result/'
+    #Check and Create dir for result
+    if not os.path.exists(path):
+        os.mkdir(path)
     targets = sys.argv[1:]
     if len(targets)>1:
         epoch = int(targets[1]);print(epoch)
@@ -234,10 +225,7 @@ if __name__ == '__main__': #if run from command line
         #alexnet Trail
         results=Alex('alex',batchsize=32,epoch = epoch,bg_remove = True)
     #NOTE: Results: = [mean_losses, mean_losses_val, accuracy, accuracy_val]
+    
     #To Save Result:
-    path = 'result/'
-    #Check and Create dir for result
-    if not os.path.exists(path):
-        os.mkdir(path)
     if os.path.exists(path):
         draw_loss_plot(results, save_path='result/')

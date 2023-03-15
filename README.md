@@ -34,3 +34,16 @@ Example: ssh zhc023@dsmlp-login.ucsd.edu
 4: ssh -N -L 8889:127.0.0.1:16585 zhc023@dsmlp-login.ucsd.edu
 
 5: Go to http://localhost:8889/user/zhc023/tree/ 
+
+### To Run the Full Experiment
+Run the following command
+```
+python run.py main 10
+```
+"10" specified the maximum number of epoch the model will train, Feel free to update it to any value.
+Some other hyperparameters can be view and change in "run.py"
+
+Similar to the test trail, all output from can be removed by 
+```
+rm -r result/
+```
