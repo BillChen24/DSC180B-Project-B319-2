@@ -80,7 +80,13 @@ def main(trail = 'main', batchsize=64, epoch = 30, bg_remove = False, normalize 
         if epoch_loss < min_val_loss:
             min_val_loss = epoch_loss
             model_dict = model.state_dict()
-
+    #test and record prediction
+    gen=get_data_generator(trail, dataset, batchsize = batchsize, shuffle=True)
+    acc, labels, pred = test_model(gen, model)
+    test_record(acc, labels, pred,path = 'result/')
+    print('check result')
+            
+    
     #Display Output
     #Save the best model
     mode_savepath = f"result/best_model_{str(datetime.today())[:10].replace(' ','_')}.pt"
@@ -135,8 +141,19 @@ def Alex(trail = 'alex', batchsize=64, epoch = 10, bg_remove = False, normalize 
             #state_dict = {'model': model_dict} #'optimizer': self.__optimizer.state_dict()}
             
     #Display Output
-    
     return [mean_losses, mean_losses_val, accuracy, accuracy_val]
+
+def test_record(accs, labels, predictions,path = 'result/'):
+    store_path = path+f"prediction_{str(datetime.today())[:19].replace(' ','_')}.txt"
+    #Test and record model performance:
+    with open(store_path, 'w') as f:
+        # Write 5 lines of text to the file
+        f.write('-------------Accuracy---------------\n')
+        f.write(f'{accs}\n')
+        f.write('-------------labels---------------\n')
+        f.write(f'{labels}\n')
+        f.write('-------------predictions---------------\n')
+        f.write(f'{predictions}\n')
 
 def get_imgs(test_data_path, test_meta_path):
     

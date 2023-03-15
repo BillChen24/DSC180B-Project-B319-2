@@ -272,10 +272,10 @@ def test_model(data_loader, model, dataset= None,  bg_remove = False, normalize 
         train_image.detach() #TO help free memory
         train_label.detach()
 
-        print('Overall Accuracy:')
-        print(sum(predictions)/len(predictions))
+    print('Overall Accuracy:')
+    print(sum(predictions)/len(predictions)),  train_labels, outputs
        
-    return sum(predictions)/len(predictions)
+    return sum(predictions)/len(predictions),train_labels,outputs
 
 
 #Model 2
