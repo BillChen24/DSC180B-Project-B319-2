@@ -32,7 +32,7 @@ from src.normalize import *
 from src.iwildcam_dataset import *
 
 
-def main(trail = 'main', batchsize=64, epoch = 10, bg_remove = False, normalize = False):
+def main(trail = 'main', batchsize=64, epoch = 30, bg_remove = False, normalize = False):
     """
     trails: main / test
     Train: trian new model / read exist model
@@ -98,7 +98,7 @@ def main(trail = 'main', batchsize=64, epoch = 10, bg_remove = False, normalize 
             #model.load_state_dict(torch.load(PATH))
     #Display Output
     #Save the best model
-    mode_savepath = f"best_model_{str(datetime.today())[:10].replace(' ','_')}.pt"
+    mode_savepath = f"result/best_model_{str(datetime.today())[:10].replace(' ','_')}.pt"
     torch.save(model_dict, mode_savepath)
     return [mean_losses, mean_losses_val, accuracy, accuracy_val]
 
@@ -144,7 +144,7 @@ def Alex(trail = 'alex', batchsize=64, epoch = 10, bg_remove = False, normalize 
             min_val_loss = epoch_loss
             model_dict = model.model.state_dict()
             #Save the best model
-            mode_savepath = f"best_model_{str(datetime.today())[:10].replace(' ','_')}.pt"
+            mode_savepath = f"result/best_model_{str(datetime.today())[:10].replace(' ','_')}.pt"
             torch.save(model_dict, mode_savepath)
             #state_dict = {'model': model_dict} #'optimizer': self.__optimizer.state_dict()}
             
