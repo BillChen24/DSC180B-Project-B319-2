@@ -12,7 +12,7 @@ And for testing and analysis purpose, mapping should be both direction
 """
 
 import numpy as np
-folderpath = ''
+folderpath = 'data/'
 
 #Find Locations with more than 1000 images
 def filter_trainingset(meta, save=False):
@@ -26,29 +26,35 @@ def filter_trainingset(meta, save=False):
 
     #Select meta train
     selected_rows = meta[meta['location'].isin(locations)]
-    g=selected_rows.groupby(['split','category_id']).count().reset_index()
+    g=selected_rows.groupby(['split','category_id']).count().reset_index() 
     categories =g[(g['split']=='train')&(g['y']>100)]['category_id'].values
     print(categories)
     #Categories is a mapper from order id to cat (categories[index] = category id)
+    
+    selected_rows = meta[meta['location'].isin(locations)]
+    g=selected_rows.groupby(['split','y']).count().reset_index()
+    categories_index =g[(g['split']=='train')&(g['category_id']>100)]['y'].values
+    print(categories_index) #index the category in category csv 
 
     #Get the mapper from catid to order id :
     cat_order=np.zeros(1000)
-    for i, cat in enumerate(categories):
+    for i, cat in enumerate(categories_index):
         cat_order[cat]=i
 
     if save == True:
         with open(folderpath+'train_location_categories_id.npy', 'wb') as f:
             np.save(f, locations)
             np.save(f, categories)
+            np.save(f, categories_index)
         with open(folderpath+'catorder_to_catid.npy', 'wb') as f:
-            np.save(f, locations)
+            np.save(f, categories_index)
             
         with open(folderpath+'catid_to_catorder.npy', 'wb') as f:
             np.save(f, cat_order)
            
     return locations, categories
 
-def Category_id_order_mapper(catId=None, Catorder=None, id2order=True):
+def Category_id_order_mapper(catId=None, Catorder=None, id2order=True, binary=False):
     """
     catID should be list / array / tensor of size batchsize x 1
     read the 0 index from somepath/train_location_categories_id.npy
@@ -56,16 +62,20 @@ def Category_id_order_mapper(catId=None, Catorder=None, id2order=True):
     id2order == True: take in category id in meta data, return order index
     ==Flase: take in order index, return category id as shown in meta data
 
+    Binary = True: Map 0 to 0, map all other label to 1
     """
-    if id2order == True:
-        with open(folderpath+'catid_to_catorder.npy', 'rb') as f:
-            Catorder = np.load(f)
-        return Catorder[catId]
-    else: 
-        with open(folderpath+'catorder_to_catid.npy', 'rb') as f:
-            catId = np.load(f)
-        return catId[Catorder]
-    
+    if binary==False:
+        if id2order == True:
+            with open(folderpath+'catid_to_catorder.npy', 'rb') as f:
+                Catorder = np.load(f)
+            return Catorder[catId]
+        else: 
+            with open(folderpath+'catorder_to_catid.npy', 'rb') as f:
+                catId = np.load(f)
+            return catId[Catorder]
+    elif binary == True:
+        return (catId != 0).long()
+
 
 
 

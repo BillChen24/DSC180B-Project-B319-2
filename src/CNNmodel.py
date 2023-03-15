@@ -6,11 +6,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 from src.background import *
 from src.rgb_visualization import *
+from src.normalize import *
+from src.iwildcam_dataset import *
+from src.id_mapper import *
 import torch
 
 import random
 import torch.nn as nn
 import torch.optim as optim
+import torchvision.models as models
 import torch.nn.functional as F
 from datetime import datetime
 import math
@@ -22,7 +26,7 @@ ROOT_STATS_DIR = './experiment_data'
 import copy
 
 
-#Model
+#Model 1
 class CustomCNN(nn.Module):
     '''
     A Custom CNN (Task 1) implemented using PyTorch modules based on the architecture in the PA writeup. 
@@ -87,8 +91,9 @@ class CustomCNN(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
+    
 
-def train_oneepoch(data_loader, model, loss_func, dataset= None, optimizer = None, learning_rate = 0.0001, bg_remove = False, normalize = False):
+def train_oneepoch(data_loader, model, loss_func, dataset= None, optimizer = None, learning_rate = 0.0001, bg_remove = False, binary = False, normalize = False):
     """
     1 epoch update model with whole dataset (in batches ) once 
     
@@ -105,27 +110,32 @@ def train_oneepoch(data_loader, model, loss_func, dataset= None, optimizer = Non
     #batch_size=10
     total_loss = 0
     criterion = nn.CrossEntropyLoss()
-    #for i in enumerate(tqdm(self.__train_loader)):
-    for i,databatch in enumerate(tqdm(data_loader)):    
-        if optimizer == 'Adam':
+    
+    if optimizer == 'Adam':
             optimizer = optim.Adam(model.parameters(),lr=learning_rate)
-            optimizer.zero_grad()
+    for i,databatch in enumerate(tqdm(data_loader)):    
+        
+        optimizer.zero_grad()
         train_image = databatch[0] #batchsize ,3, 448, 448
         train_label = databatch[1]
+        train_meta = databatch[2]
         #BG subtract
         if bg_remove == True:
-            ...
-            #train_datas = [train_data[idx] for idx in range(i[1], i[1]+batch_size)]
-            #print(len(train_datas))
-            #print(train_datas[0])
-            #mean_bgs = torch.load('data/Background/mean_background.json')
-            #train_image = torch.stack([remove_background(d, mean_bgs, alpha = 0) for d in train_datas])
+            median_bgs = torch.load('data/Background/median_background.json')
+            bgs = torch.stack([find_background(median_bgs, meta_array = meta) for meta in train_meta])
+            subtracted = train_image-bgs
+            masks = torch.stack([getBinary(s, alpha = 1) for s in subtracted])
+            train_image = torch.mul(train_image, masks)
+            if binary == True:
+                train_image = masks
+            
         #Normalization
         if normalize == True:
             train_image = torch.stack([normalZ(d) for d in train_image])
-        #train_image=... #batchsize ,3, 448, 448
-        #print(train_image.shape)
-        train_label = torch.clip(train_label, min=0, max = 499)
+        train_label = Category_id_order_mapper(catId=train_label, Catorder=None, id2order=True, binary=True) #Map class id to index
+        #train_label = Category_id_order_mapper_binary(catId=train_label, Catorder=None, id2order=True)
+       
+        train_label=torch.tensor(train_label,dtype=torch.long)
         train_image = train_image.to(model.device)
         train_label = train_label.to(model.device)
        
@@ -141,28 +151,68 @@ def train_oneepoch(data_loader, model, loss_func, dataset= None, optimizer = Non
         train_label.detach()
         if optimizer is not None:
             optimizer.step()
+        if i ==20:
+            break
     return total_loss/i
 
-def validate_oneepoch(data_loader, model, loss_func, optimizer = None, learning_rate = 0.0001):
+def validation_oneepoch(data_loader, model, loss_func, dataset= None, optimizer = None, learning_rate = 0.0001, bg_remove = False, normalize = False):
+    """
+    1 epoch update model with whole dataset (in batches ) once 
+    
+    INPUT:
+    data_loader: modified data loader from iwildcam
+    model: model object
+    loss func: str, loss function type #Not in use 
+    optimizer: None or Adam
+    learning_rate: float (defualt 0.0001)
+    
+    OUTPUT:
+    average training Loss of given epoch 
+    """
+    #batch_size=10
     total_loss = 0
     criterion = nn.CrossEntropyLoss()
     
-    for i in enumerate(tqdm(data_loader)):        
-        if optimizer == 'Adam':
-            optimizer = optim.Adam(model.parameters(),lr=learning_rate)
-        optimizer.zero_grad()
-        train_image = ... #i[1][0] #batchsize ,3, 256,256
-        train_image.to(self.device)
-        ...    
-        batch_size = train_image.shape[0]
-        output = model.forward(x=train_image,captions=copy.deepcopy(train_captions[:,:-1]),batch_size=batch_size,teacher_forcing=True)
+    for i,databatch in enumerate(tqdm(data_loader)):    
+#         if optimizer == 'Adam':
+#             optimizer = optim.Adam(model.parameters(),lr=learning_rate)
+#             optimizer.zero_grad()
+        train_image = databatch[0] #batchsize ,3, 448, 448
+        train_label = databatch[1]
+        train_meta = databatch[2]
+        #BG subtract
+        if bg_remove == True:
+            median_bgs = torch.load('data/Background/median_background.json')
+            bgs = torch.stack([find_background(median_bgs, meta_array = meta) for meta in train_meta])
+            subtracted = train_image-bgs
+            masks = torch.stack([getBinary(s) for s in subtracted])
+            train_image = torch.mul(train_image, masks)
+            
+        #Normalization
+        if normalize == True:
+            train_image = torch.stack([normalZ(d) for d in train_image])
+      
+        train_label = Category_id_order_mapper(catId=train_label, Catorder=None, id2order=True) #Map class id to index
+        
+        train_label=torch.tensor(train_label,dtype=torch.long)
+        train_image = train_image.to(model.device)
+        train_label = train_label.to(model.device)
        
+        batch_size = train_image.shape[0]
+        output = model.forward(x=train_image)
+        #print(output.shape) #batchsize x class number
+
         loss = criterion(output,train_label)
-        total_loss += loss.item()
-        # If trainig: 
-        loss.backward()
-        optimizer.step()
-    return total_loss/len(self.__train_loader)
+        total_loss += loss.item()/batch_size
+       
+        loss.backward() #update
+        train_image.detach() #TO help free memory
+        train_label.detach()
+       
+        if i ==20:
+            break
+    return total_loss/i
+
 
 def train_model(total_epoch):
     print("start running")
@@ -202,5 +252,122 @@ def train_model(total_epoch):
                 #self.__record_stats(train_loss, val_loss)
                 break
 
-       #Save Model
-        ...
+#Model 2
+class TransferAlex():
+    '''
+    A Custom CNN (Task 1) implemented using PyTorch modules based on the architecture in the PA writeup. 
+    This will serve as the encoder for our Image Captioning problem.
+    '''
+    def __init__(self, outputs):
+        '''
+        Define the layers (convolutional, batchnorm, maxpool, fully connected, etc.)
+        with the correct arguments
+        
+        Parameters:
+            outputs => the number of output classes that the final fully connected layer
+                       should map its input to
+        '''
+       
+        #Check
+        if torch.cuda.is_available():
+            self.device = torch.device('cuda:0')
+            print('To Cuda')
+            
+        #Initialize Layers
+        self.model = models.alexnet(pretrained=True)
+        for param in self.model.features.parameters():
+            param.requires_grad = False
+            
+        num_classes = outputs
+        self.model.classifier[-1] = nn.Linear(in_features=4096, out_features=num_classes)
+        
+        for param in self.model.classifier[-1].parameters():
+            param.requires_grad = True
+        
+    
+    def forward(self, x):
+        '''
+        Forward calculate through layers 
+        
+        INPUT:
+            x: Input to the CNN
+            dim of x: batchsize x 3 x height x width 
+        
+        OUTPUT:
+            output label prediction: batchsize x class
+            
+        '''
+        # Define the transformation pipeline
+        transform = transforms.Compose([
+        transforms.Resize(256),   # Resize the input image to 256x256
+        transforms.CenterCrop(224),   # Crop the center of the image to 224x224
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+        x = transform(x)
+        x=self.model(x)
+        
+        return x
+    
+def train_oneepoch_alex(data_loader, model, loss_func, dataset= None, optimizer = 'SGD', learning_rate = 0.0001, bg_remove = False, binary = False, normalize = False):
+    """
+    1 epoch update model with whole dataset (in batches ) once 
+    
+    INPUT:
+    data_loader: modified data loader from iwildcam
+    model: model object
+    loss func: str, loss function type #Not in use 
+    optimizer: None or Adam
+    learning_rate: float (defualt 0.0001)
+    
+    OUTPUT:
+    average training Loss of given epoch 
+    """
+    #batch_size=10
+    total_loss = 0
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.model.parameters(), lr=0.001, momentum=0.9)
+
+    for i,databatch in enumerate(tqdm(data_loader)):    
+        
+        optimizer.zero_grad()
+        train_image = databatch[0] #batchsize ,3, 448, 448
+        train_label = databatch[1]
+        train_meta = databatch[2]
+        #BG subtract
+        if bg_remove == True:
+            median_bgs = torch.load('data/Background/median_background.json')
+            bgs = torch.stack([find_background(median_bgs, meta_array = meta) for meta in train_meta])
+            subtracted = train_image-bgs
+            masks = torch.stack([getBinary(s, alpha = 1) for s in subtracted])
+            train_image = torch.mul(train_image, masks)
+            if binary == True:
+                train_image = masks
+            
+        #Normalization
+        if normalize == True:
+            train_image = torch.stack([normalZ(d) for d in train_image])
+       
+        train_label = Category_id_order_mapper(catId=train_label, Catorder=None, id2order=True, binary=False) #Map class id to index
+        #train_label = Category_id_order_mapper_binary(catId=train_label, Catorder=None, id2order=True)
+       
+        train_label=torch.tensor(train_label,dtype=torch.long)
+        train_image = train_image.to(model.device)
+        train_label = train_label.to(model.device)
+       
+        batch_size = train_image.shape[0]
+        output = model.forward(x=train_image)
+        #print(output.shape) #batchsize x class number
+
+        loss = criterion(output,train_label)
+        total_loss += loss.item()/batch_size
+        # If trainig: 
+        loss.backward() #update
+        train_image.detach() #TO help free memory
+        train_label.detach()
+        if optimizer is not None:
+            optimizer.step()
+        if i ==100:
+            break
+    return total_loss/i
+
+    
