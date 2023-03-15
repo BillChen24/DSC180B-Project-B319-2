@@ -6,9 +6,13 @@ After downloading the githubt repo (including the sample data in data folder), r
 ```
 python run.py test
 ```
-This code will train a modified AlexNet on the sample data and generate a loss curve over epochs.
+This code will train a custom CNN model on the sample data and generate a loss curve over epochs.
 
-The loss plot will be saved in the path printed at teh end of the execution.
+The loss plot will be saved in the path printed at the end of the execution.
+
+The trained model will be saved in the path printed at the end of the execution.
+
+Code will create a "result/" folder if such folder doesn't exist in the local repository and store the loss plot and model in this folder
 
 #### After Runing
 To clear all output files, run the following command in terminal:
